@@ -89,7 +89,7 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
         }
 
         if(should_dump){
-            pr_warning("high loadavg deteced: load1 %lu.%02lu >= %u\n", 
+            pr_warning("high loadavg detected: load1 %lu.%02lu >= %u\n",
                     LOAD_INT(avnrun), LOAD_FRAC(avnrun),  load_threshold);
             dump_r_d_task();
             last_dump_time = now;
