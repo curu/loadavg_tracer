@@ -93,6 +93,7 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
                     LOAD_INT(avnrun), LOAD_FRAC(avnrun),  load_threshold);
             dump_r_d_task();
             last_dump_time = now;
+            pr_warning("task dump cost %llu us\n", (ktime_get_ns() - now)/1000);
         }
     }
 
