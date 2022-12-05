@@ -2,7 +2,8 @@
 a simple Linux loadavg tracer
 
 ## How to build
-install kernel dev package, and run `make`
+Note: the current version support only RHEL/CentOS7 kernel.
+just install kernel dev package and run `make`
 
 ## How to use
 ```bash
