@@ -81,7 +81,7 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
     u64 now = ktime_get_ns();
     avnrun = avenrun[0] + FIXED_1/200;
 
-    if(LOAD_INT(avnrun) > load_threshold){
+    if(LOAD_INT(avnrun) >= load_threshold){
         if(dump_interval){
             should_dump = now - last_dump_time >= dump_interval*NSEC_PER_SEC;
         }else{
