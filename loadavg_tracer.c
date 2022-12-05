@@ -23,13 +23,13 @@ static int load_threshold = 10;
 module_param(load_threshold, int, 0640);
 MODULE_PARM_DESC(load_threshold, "dump task when loadavg1 higher than this");
 
-static int dump_interval = 5;
+static int dump_interval = 0;
 module_param(dump_interval, int, 0640);
 MODULE_PARM_DESC(dump_interval, "interval between two task dump(in second)");
 
 struct hrtimer timer;
 static u64 last_dump_time;
-
+static long last_avnrun;
 
 static int __init loadavg_tracer_init(void);
 static void __exit loadavg_tracer_exit(void);
@@ -77,16 +77,26 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
 {
 
     unsigned long avnrun;
+    int should_dump = 0;
     u64 now = ktime_get_ns();
     avnrun = avenrun[0] + FIXED_1/200;
+
     if(LOAD_INT(avnrun) > load_threshold){
-        if(now - last_dump_time >= dump_interval*NSEC_PER_SEC){
+        if(dump_interval){
+            should_dump = now - last_dump_time >= dump_interval*NSEC_PER_SEC;
+        }else{
+            should_dump = last_avnrun != avnrun;
+        }
+
+        if(should_dump){
             pr_warning("high loadavg deteced: load1 %lu.%02lu >= %u\n", 
                     LOAD_INT(avnrun), LOAD_FRAC(avnrun),  load_threshold);
             dump_r_d_task();
             last_dump_time = now;
         }
     }
+
+    last_avnrun = avnrun;
 
     hrtimer_forward_now(timer, ns_to_ktime(CHECK_INTERVAL_NSEC));
     return HRTIMER_RESTART;
