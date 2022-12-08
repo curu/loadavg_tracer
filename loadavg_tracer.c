@@ -1,6 +1,7 @@
 /***************************************************************************
  * a loadavg_tracer
  * author: Curu Wong
+ * copyright: Tencent
  *******************************************************************************/
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -10,6 +11,9 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/stacktrace.h>
+#include <linux/sched/signal.h>
+#include <linux/sched/loadavg.h>
+#include <linux/kallsyms.h>
 
 #define CHECK_INTERVAL_NSEC  1*1000000L
 #define STACK_MAX_ENTRY 32
@@ -29,21 +33,27 @@ MODULE_PARM_DESC(dump_interval, "interval between two task dump(in second)");
 
 struct hrtimer timer;
 static u64 last_dump_time;
+
 static long last_avnrun;
 
 static int __init loadavg_tracer_init(void);
 static void __exit loadavg_tracer_exit(void);
 
+unsigned int (*p_stack_trace_save_tsk)(struct task_struct *tsk, unsigned long *store,
+                  unsigned int size, unsigned int skipnr);
 static void dump_r_d_task(void)
 {
     struct task_struct *g, *p;
     unsigned int state;
+	unsigned long *entries;
+	unsigned int nr_entries;
 
-    struct stack_trace trace;
-    unsigned long backtrace[STACK_MAX_ENTRY];
     char *buf;
     int i=0;
 
+	entries = kmalloc_array(STACK_MAX_ENTRY, sizeof(*entries), GFP_ATOMIC);
+	if(!entries)
+		return;
     buf = kmalloc(STACK_STR_LEN, GFP_ATOMIC);
     if(buf == NULL){
         return;
@@ -52,18 +62,15 @@ static void dump_r_d_task(void)
     rcu_read_lock();
     for_each_process_thread(g, p) {
         state = p->state;
-        if( (state == TASK_RUNNING) || (state & TASK_UNINTERRUPTIBLE) ){
+        if( (state == TASK_RUNNING) || ((state & TASK_UNINTERRUPTIBLE) && !(state & TASK_NOLOAD)) ){
             pr_warning("%c [%03d] %-15s %5d\n", task_state_to_char(p), task_cpu(p), p->comm, task_pid_nr(p));
 
             if(i < MAX_DUMP_COUNT){
                 //print stack
-                memset(&trace, 0, sizeof(trace));
-                trace.max_entries = STACK_MAX_ENTRY;
-                trace.entries = &backtrace[0];
-                save_stack_trace_tsk(p, &trace);
+				nr_entries = (*p_stack_trace_save_tsk)(p, entries, STACK_MAX_ENTRY, 0);
 
                 memset(buf, 0, STACK_STR_LEN);
-                snprint_stack_trace(buf, STACK_STR_LEN, &trace, 0);
+				stack_trace_snprint(buf, STACK_STR_LEN, entries, nr_entries, 0);
                 pr_warning("\n%s\n", buf);
                 i += 1;
             }
@@ -80,7 +87,6 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
     int should_dump = 0;
     u64 now = ktime_get_ns();
     avnrun = avenrun[0] + FIXED_1/200;
-
     if(LOAD_INT(avnrun) >= load_threshold){
         if(dump_interval){
             should_dump = now - last_dump_time >= dump_interval*NSEC_PER_SEC;
@@ -105,6 +111,11 @@ enum hrtimer_restart timer_callback(struct hrtimer *timer)
 
 static int __init loadavg_tracer_init(void)
 {
+	p_stack_trace_save_tsk = (void*)kallsyms_lookup_name("stack_trace_save_tsk");
+	if(!p_stack_trace_save_tsk){
+		pr_err("can't find kernel function 'stack_trace_save_tsk'\n");
+		return -EINVAL;;
+	}
     hrtimer_init(&timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     timer.function = &timer_callback;
     hrtimer_start(&timer, ns_to_ktime(CHECK_INTERVAL_NSEC), HRTIMER_MODE_REL);
