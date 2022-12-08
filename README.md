@@ -2,7 +2,9 @@
 a simple Linux loadavg tracer
 
 ## How to build
-Note: the current version support only RHEL/CentOS7 kernel.
+Note: the main branch support only TencentOS.
+for CentOS7 support please go to CentOS7 branch.
+
 just install kernel dev package and run `make`
 
 ## How to use
