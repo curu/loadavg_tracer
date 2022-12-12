@@ -12,8 +12,8 @@ just install kernel dev package and run `make`
 insmod loadavg_tracer.ko [load_threshold=10] [dump_interval=5]
 # eg:
 # dump task name and stack every 5 seconds when 1 minute loadavg is higher than 20
-insmod loadavg_tracer.ko load_threshold=20 dump_interval=5
-dmest -w
+insmod loadavg_tracer.ko load_threshold=20
+dmesg -w
 ```
 sample output:
 ```
