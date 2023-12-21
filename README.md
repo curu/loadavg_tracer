@@ -3,9 +3,12 @@ a simple Linux loadavg tracer
 
 ## How to build
 Note: the main branch support only TencentOS.
-for CentOS7 support please go to CentOS7 branch.
+* for CentOS7 3.10 kernel support please go to CentOS7 branch.
+* for CentOS7 with elrepo kernel above 5.x, you shoud install devtoolset-9 and above, then use it to build this module
+  `scl enable devtoolset-9 bash`
 
 just install kernel dev package and run `make`
+
 
 ## How to use
 ```bash
